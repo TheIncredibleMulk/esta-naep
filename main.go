@@ -75,6 +75,10 @@ func main() {
 	// }
 	// fmt.Println(cell)
 	// Get all the rows in the Sheet1.
+	//
+	// All the case statements here are very fragile, if anything changes in the excel sheet it'll break something or generate incorrect data.
+	// Todo: Make this a bit more resilient.
+	// It may be fine to just leave it for our purposes.
 
 	// ESTA TLV Map
 	rows, err := f.GetRows("ESTA TLV Map")
