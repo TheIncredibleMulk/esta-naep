@@ -2,7 +2,12 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
+
+	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -51,17 +56,58 @@ var rowToStruct = map[int]string{
 	9: "naepGuidance",
 }
 
+// BubbleTea config
+var baseStyle = lipgloss.NewStyle().
+	BorderStyle(lipgloss.NormalBorder()).
+	BorderForeground(lipgloss.Color("240"))
+
+type model struct {
+	table table.Model
+}
+
+func (m model) Init() tea.Cmd { return nil }
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "esc":
+			if m.table.Focused() {
+				m.table.Blur()
+			} else {
+				m.table.Focus()
+			}
+		case "q", "ctrl+c":
+			return m, tea.Quit
+		case "enter":
+			return m, tea.Batch(
+				tea.Printf("Let's go to %s!", m.table.SelectedRow()[1]),
+			)
+		}
+	}
+	m.table, cmd = m.table.Update(msg)
+	return m, cmd
+}
+
+func (m model) View() string {
+	return baseStyle.Render(m.table.View()) + "\n"
+}
+
 func main() {
 	f, err := excelize.OpenFile("NAEP_TLV_MAPPING.xlsx")
 	if err != nil {
-		fmt.Println(err)
+		// fmt.Println(err)
 		return
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
-			fmt.Println(err)
+			// fmt.Println(err)
 		}
 	}()
+
+	var tColumns []table.Column
+	var tRows []table.Row
 
 	var tlvMap []estaTlv
 	var tlvFieldRoster []estaTlv
@@ -70,10 +116,10 @@ func main() {
 	// Get value from the cell by given worksheet name and cell reference.
 	// cell, err := f.GetCellValue("ESTA TLV Map", "A1")
 	// if err != nil {
-	// 	fmt.Println(err)
+	// 	// fmt.Println(err)
 	// 	return
 	// }
-	// fmt.Println(cell)
+	// // fmt.Println(cell)
 	// Get all the rows in the Sheet1.
 	//
 	// All the case statements here are very fragile, if anything changes in the excel sheet it'll break something or generate incorrect data.
@@ -83,11 +129,17 @@ func main() {
 	// ESTA TLV Map
 	rows, err := f.GetRows("ESTA TLV Map")
 	if err != nil {
-		fmt.Println(err)
+		// fmt.Println(err)
 		return
 	}
 	for i, row := range rows {
 		var tlv estaTlv
+		// if i == 0 {
+		// 	for _, colCell := range row {
+		// 		c := table.Column{Title: colCell, Width: 12}
+		// 		tColumns = append(tColumns, c)
+		// 	}
+		// }
 		if i > 0 {
 			for j, colCell := range row {
 				switch j {
@@ -96,7 +148,7 @@ func main() {
 				case 1:
 					a, err := strconv.Atoi(colCell)
 					if err != nil {
-						fmt.Println("Error string conversation to int")
+						// fmt.Println("Error string conversation to int")
 					}
 					tlv.tlvSubType = a
 				case 2:
@@ -112,13 +164,13 @@ func main() {
 				case 7:
 					a, err := strconv.Atoi(colCell)
 					if err != nil {
-						fmt.Println("Error string conversation to int")
+						// fmt.Println("Error string conversation to int")
 					}
 					tlv.proposedLenBytes = a
 				case 8:
 					a, err := strconv.Atoi(colCell)
 					if err != nil {
-						fmt.Println("Error string conversation to int")
+						// fmt.Println("Error string conversation to int")
 					}
 					tlv.proposedLenBits = a
 				case 9:
@@ -151,16 +203,23 @@ func main() {
 				case 20:
 					tlv.naepGuidance = colCell
 				}
-				tlvMap = append(tlvMap, tlv)
 			}
+			tlvMap = append(tlvMap, tlv)
+			// tRows = append(tRows, row)
 		}
 		rows, err = f.GetRows("ESTA TLV Field Roster")
 		if err != nil {
-			fmt.Println(err)
+			// fmt.Println(err)
 			return
 		}
 		for i, row := range rows {
 			var tlv estaTlv
+			// if i == 0 {
+			// 	for _, colCell := range row {
+			// 		c := table.Column{Title: colCell, Width: 12}
+			// 		tColumns = append(tColumns, c)
+			// 	}
+			// }
 			if i > 0 {
 				for j, colCell := range row {
 					switch j {
@@ -169,7 +228,7 @@ func main() {
 					case 1:
 						a, err := strconv.Atoi(colCell)
 						if err != nil {
-							fmt.Println("Error string conversation to int")
+							// fmt.Println("Error string conversation to int")
 						}
 						tlv.tlvSubType = a
 					case 2:
@@ -188,19 +247,26 @@ func main() {
 						tlv.naepGuidance = colCell
 					}
 				}
-				tlvFieldRoster = append(tlvFieldRoster, tlv)
 			}
+			tlvFieldRoster = append(tlvFieldRoster, tlv)
+			// tRows = append(tRows, row)
 		}
 	}
 
 	// 3rd Party TLV Roster
 	rows, err = f.GetRows("3rd Party TLV Roster")
 	if err != nil {
-		fmt.Println(err)
+		// fmt.Println(err)
 		return
 	}
 	for i, row := range rows {
 		var tlv estaTlv
+		if i == 0 {
+			for _, colCell := range row {
+				c := table.Column{Title: colCell, Width: 18}
+				tColumns = append(tColumns, c)
+			}
+		}
 		if i > 0 {
 			for j, colCell := range row {
 				switch j {
@@ -209,7 +275,7 @@ func main() {
 				case 1:
 					a, err := strconv.Atoi(colCell)
 					if err != nil {
-						fmt.Println("Error string conversation to int")
+						// fmt.Println("Error string conversation to int")
 					}
 					tlv.tlvSubType = a
 				case 2:
@@ -229,15 +295,29 @@ func main() {
 				}
 			}
 			tlvThirdParty = append(tlvThirdParty, tlv)
+			tRows = append(tRows, row)
 		}
 	}
-	fmt.Println("tlv Map: ")
-	fmt.Println(tlvMap)
-	fmt.Println()
-	fmt.Println("tlv Field Roster: ")
-	fmt.Println(tlvFieldRoster)
-	fmt.Println()
-	fmt.Println("3rd Party TLV Roster: ")
-	fmt.Println(tlvThirdParty)
+	// fmt.Println("tlv Map: ")
+	// fmt.Println(tlvMap)
+	// fmt.Println()
+	// fmt.Println("tlv Field Roster: ")
+	// fmt.Println(tlvFieldRoster)
+	// fmt.Println()
+	// fmt.Println("3rd Party TLV Roster: ")
+	// fmt.Println(tlvThirdParty)
+
+	t := table.New(
+		table.WithColumns(tColumns),
+		table.WithRows(tRows),
+		table.WithFocused(true),
+		table.WithHeight(25),
+	)
+
+	m := model{t}
+	if _, err := tea.NewProgram(m).Run(); err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
+	}
 
 }
